@@ -15,4 +15,4 @@ jobs:
       - name: Sync fork from upstream
         run: gh api -X POST "repos/${{ github.repository }}/merge-upstream" -f branch=main
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKENJ }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
