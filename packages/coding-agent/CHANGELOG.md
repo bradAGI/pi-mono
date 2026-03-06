@@ -2,6 +2,63 @@
 
 ## [Unreleased]
 
+## [0.56.3] - 2026-03-06
+
+### New Features
+
+- `claude-sonnet-4-6` model available via the `google-antigravity` provider ([#1859](https://github.com/badlogic/pi-mono/issues/1859))
+- Custom editors can now define their own `onEscape`/`onCtrlD` handlers without being overwritten by app defaults, enabling vim-mode extensions ([#1838](https://github.com/badlogic/pi-mono/issues/1838))
+- Shift+Enter and Ctrl+Enter now work inside tmux via xterm modifyOtherKeys fallback ([docs/tmux.md](docs/tmux.md), [#1872](https://github.com/badlogic/pi-mono/issues/1872))
+- Auto-compaction is now resilient to persistent API errors (e.g. 529 overloaded) and no longer retriggers spuriously after compaction ([#1834](https://github.com/badlogic/pi-mono/issues/1834), [#1860](https://github.com/badlogic/pi-mono/issues/1860))
+
+### Added
+
+- Added `claude-sonnet-4-6` model for the `google-antigravity` provider ([#1859](https://github.com/badlogic/pi-mono/issues/1859)).
+- Added [tmux setup documentation](docs/tmux.md) for modified enter key support ([#1872](https://github.com/badlogic/pi-mono/issues/1872))
+
+### Fixed
+
+- Fixed custom editors having their `onEscape`/`onCtrlD` handlers unconditionally overwritten by app-level defaults, making vim-style escape handling impossible ([#1838](https://github.com/badlogic/pi-mono/issues/1838))
+- Fixed auto-compaction retriggering on the first prompt after compaction due to stale pre-compaction assistant usage ([#1860](https://github.com/badlogic/pi-mono/issues/1860) by [@joelhooks](https://github.com/joelhooks))
+- Fixed sessions never auto-compacting when hitting persistent API errors (e.g. 529 overloaded) by estimating context size from the last successful response ([#1834](https://github.com/badlogic/pi-mono/issues/1834))
+- Fixed compaction summarization requests exceeding context limits by truncating tool results to 2k chars ([#1796](https://github.com/badlogic/pi-mono/issues/1796))
+- Fixed `/new` leaving startup header content, including the changelog, visible after starting a fresh session ([#1880](https://github.com/badlogic/pi-mono/issues/1880))
+- Fixed misleading docs and example implying that returning `{ isError: true }` from a tool's `execute` function marks the execution as failed; errors must be signaled by throwing ([#1881](https://github.com/badlogic/pi-mono/issues/1881))
+- Fixed model switches through non-reasoning models to preserve the saved default thinking level instead of persisting a capability-forced `off` clamp ([#1864](https://github.com/badlogic/pi-mono/issues/1864))
+- Fixed parallel pi processes failing with false "No API key found" errors due to immediate lockfile contention on `auth.json` and `settings.json` ([#1871](https://github.com/badlogic/pi-mono/issues/1871))
+- Fixed OpenAI Responses reasoning replay regression that broke multi-turn reasoning continuity ([#1878](https://github.com/badlogic/pi-mono/issues/1878))
+
+## [0.56.2] - 2026-03-05
+
+### New Features
+
+- GPT-5.4 support across `openai`, `openai-codex`, `azure-openai-responses`, and `opencode`, with `gpt-5.4` now the default for `openai` and `openai-codex` ([README.md](README.md), [docs/providers.md](docs/providers.md)).
+- `treeFilterMode` setting to choose the default `/tree` filter mode (`default`, `no-tools`, `user-only`, `labeled-only`, `all`) ([docs/settings.md](docs/settings.md), [#1852](https://github.com/badlogic/pi-mono/pull/1852) by [@lajarre](https://github.com/lajarre)).
+- Mistral native conversations integration with SDK-backed provider behavior, preserving Mistral-specific thinking and replay semantics ([README.md](README.md), [docs/providers.md](docs/providers.md), [#1716](https://github.com/badlogic/pi-mono/issues/1716)).
+
+### Added
+
+- Added `gpt-5.4` model availability for `openai`, `openai-codex`, `azure-openai-responses`, and `opencode` providers.
+- Added `gpt-5.3-codex` fallback model availability for `github-copilot` until upstream model catalogs include it ([#1853](https://github.com/badlogic/pi-mono/issues/1853)).
+- Added `treeFilterMode` setting to choose the default `/tree` filter mode (`default`, `no-tools`, `user-only`, `labeled-only`, `all`) ([#1852](https://github.com/badlogic/pi-mono/pull/1852) by [@lajarre](https://github.com/lajarre)).
+
+### Changed
+
+- Updated the default models for the `openai` and `openai-codex` providers to `gpt-5.4`.
+
+### Fixed
+
+- Fixed GPT-5.3 Codex follow-up turns dropping OpenAI Responses assistant `phase` metadata by preserving replayable signatures in session history and forwarding `phase` back to the Responses API ([#1819](https://github.com/badlogic/pi-mono/issues/1819)).
+- Fixed OpenAI Responses replay to omit empty thinking blocks, avoiding invalid no-op reasoning items in follow-up turns.
+- Updated Mistral integration to use the native SDK-backed provider and conversations API, including coding-agent model/provider wiring and Mistral setup documentation ([#1716](https://github.com/badlogic/pi-mono/issues/1716)).
+- Fixed Antigravity reliability: endpoint cascade on 403/404, added autopush sandbox fallback, removed extra fingerprint headers ([#1830](https://github.com/badlogic/pi-mono/issues/1830)).
+- Fixed `@mariozechner/pi-ai/oauth` extension imports in published installs by resolving the subpath directly from built `dist` files instead of package-root wrapper shims ([#1856](https://github.com/badlogic/pi-mono/issues/1856)).
+- Fixed Gemini 3 multi-turn tool use losing structured context by using `skip_thought_signature_validator` sentinel for unsigned function calls instead of text fallback ([#1829](https://github.com/badlogic/pi-mono/issues/1829)).
+- Fixed model selector filter not accepting typed characters in VS Code 1.110+ due to missing Kitty CSI-u printable decoding in the `Input` component ([#1857](https://github.com/badlogic/pi-mono/issues/1857))
+- Fixed editor/footer visibility drift during terminal resize by forcing full redraws when terminal width or height changes ([#1844](https://github.com/badlogic/pi-mono/pull/1844) by [@ghoulr](https://github.com/ghoulr)).
+- Fixed footer width truncation for wide Unicode text (session name, model, provider) to prevent TUI crashes from rendered lines exceeding terminal width ([#1833](https://github.com/badlogic/pi-mono/issues/1833)).
+- Fixed Windows write preview background artifacts by normalizing CRLF content (`\r\n`) to LF for display rendering in tool output previews ([#1854](https://github.com/badlogic/pi-mono/issues/1854)).
+
 ## [0.56.1] - 2026-03-05
 
 ### Fixed

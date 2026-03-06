@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.56.3] - 2026-03-06
+
+### Added
+
+- Added xterm modifyOtherKeys mode 2 fallback when Kitty keyboard protocol is not available, enabling modified enter keys (Shift+Enter, Ctrl+Enter) inside tmux ([#1872](https://github.com/badlogic/pi-mono/issues/1872))
+
+## [0.56.2] - 2026-03-05
+
+### Added
+
+- Exported `decodeKittyPrintable()` from `keys.ts` for decoding Kitty CSI-u sequences into printable characters
+
+### Fixed
+
+- Fixed `Input` component not accepting typed characters when Kitty keyboard protocol is active (e.g., VS Code 1.110+), causing model selector filter to ignore keystrokes ([#1857](https://github.com/badlogic/pi-mono/issues/1857))
+- Fixed editor/footer visibility drift during terminal resize by forcing full redraws when terminal width or height changes ([#1844](https://github.com/badlogic/pi-mono/pull/1844) by [@ghoulr](https://github.com/ghoulr)).
+
 ## [0.56.1] - 2026-03-05
 
 ### Fixed

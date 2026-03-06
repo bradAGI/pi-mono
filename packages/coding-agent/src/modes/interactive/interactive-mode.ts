@@ -1634,10 +1634,18 @@ export class InteractiveMode {
 			// Use duck typing since instanceof fails across jiti module boundaries
 			const customEditor = newEditor as unknown as Record<string, unknown>;
 			if ("actionHandlers" in customEditor && customEditor.actionHandlers instanceof Map) {
-				customEditor.onEscape = () => this.defaultEditor.onEscape?.();
-				customEditor.onCtrlD = () => this.defaultEditor.onCtrlD?.();
-				customEditor.onPasteImage = () => this.defaultEditor.onPasteImage?.();
-				customEditor.onExtensionShortcut = (data: string) => this.defaultEditor.onExtensionShortcut?.(data);
+				if (!customEditor.onEscape) {
+					customEditor.onEscape = () => this.defaultEditor.onEscape?.();
+				}
+				if (!customEditor.onCtrlD) {
+					customEditor.onCtrlD = () => this.defaultEditor.onCtrlD?.();
+				}
+				if (!customEditor.onPasteImage) {
+					customEditor.onPasteImage = () => this.defaultEditor.onPasteImage?.();
+				}
+				if (!customEditor.onExtensionShortcut) {
+					customEditor.onExtensionShortcut = (data: string) => this.defaultEditor.onExtensionShortcut?.(data);
+				}
 				// Copy action handlers (clear, suspend, model switching, etc.)
 				for (const [action, handler] of this.defaultEditor.actionHandlers) {
 					(customEditor.actionHandlers as Map<string, () => void>).set(action, handler);
@@ -3045,6 +3053,7 @@ export class InteractiveMode {
 					hideThinkingBlock: this.hideThinkingBlock,
 					collapseChangelog: this.settingsManager.getCollapseChangelog(),
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
+					treeFilterMode: this.settingsManager.getTreeFilterMode(),
 					showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
 					editorPaddingX: this.settingsManager.getEditorPaddingX(),
 					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
@@ -3123,6 +3132,9 @@ export class InteractiveMode {
 					},
 					onDoubleEscapeActionChange: (action) => {
 						this.settingsManager.setDoubleEscapeAction(action);
+					},
+					onTreeFilterModeChange: (mode) => {
+						this.settingsManager.setTreeFilterMode(mode);
 					},
 					onShowHardwareCursorChange: (enabled) => {
 						this.settingsManager.setShowHardwareCursor(enabled);
@@ -3413,6 +3425,7 @@ export class InteractiveMode {
 	private showTreeSelector(initialSelectedId?: string): void {
 		const tree = this.sessionManager.getTree();
 		const realLeafId = this.sessionManager.getLeafId();
+		const initialFilterMode = this.settingsManager.getTreeFilterMode();
 
 		if (tree.length === 0) {
 			this.showStatus("No entries in session");
@@ -3531,6 +3544,7 @@ export class InteractiveMode {
 					this.ui.requestRender();
 				},
 				initialSelectedId,
+				initialFilterMode,
 			);
 			return { component: selector, focus: selector };
 		});
@@ -4158,6 +4172,7 @@ export class InteractiveMode {
 		await this.session.newSession();
 
 		// Clear UI state
+		this.headerContainer.clear();
 		this.chatContainer.clear();
 		this.pendingMessagesContainer.clear();
 		this.compactionQueuedMessages = [];
