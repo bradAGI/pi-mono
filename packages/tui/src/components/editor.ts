@@ -5,7 +5,7 @@ import { KillRing } from "../kill-ring.js";
 import { type Component, CURSOR_MARKER, type Focusable, type TUI } from "../tui.js";
 import { UndoStack } from "../undo-stack.js";
 import { getSegmenter, isPunctuationChar, isWhitespaceChar, truncateToWidth, visibleWidth } from "../utils.js";
-import { SelectList, type SelectListTheme } from "./select-list.js";
+import { SelectList, type SelectListLayoutOptions, type SelectListTheme } from "./select-list.js";
 
 const baseSegmenter = getSegmenter();
 
@@ -206,6 +206,11 @@ export interface EditorOptions {
 	paddingX?: number;
 	autocompleteMaxVisible?: number;
 }
+
+const SLASH_COMMAND_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
+	minPrimaryColumnWidth: 12,
+	maxPrimaryColumnWidth: 32,
+};
 
 export class Editor implements Component, Focusable {
 	private state: EditorState = {
@@ -897,17 +902,21 @@ export class Editor implements Component, Focusable {
 		return this.state.lines.join("\n");
 	}
 
+	private expandPasteMarkers(text: string): string {
+		let result = text;
+		for (const [pasteId, pasteContent] of this.pastes) {
+			const markerRegex = new RegExp(`\\[paste #${pasteId}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
+			result = result.replace(markerRegex, () => pasteContent);
+		}
+		return result;
+	}
+
 	/**
 	 * Get text with paste markers expanded to their actual content.
 	 * Use this when you need the full content (e.g., for external editor).
 	 */
 	getExpandedText(): string {
-		let result = this.state.lines.join("\n");
-		for (const [pasteId, pasteContent] of this.pastes) {
-			const markerRegex = new RegExp(`\\[paste #${pasteId}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
-			result = result.replace(markerRegex, pasteContent);
-		}
-		return result;
+		return this.expandPasteMarkers(this.state.lines.join("\n"));
 	}
 
 	getLines(): string[] {
@@ -1152,11 +1161,7 @@ export class Editor implements Component, Focusable {
 	}
 
 	private submitValue(): void {
-		let result = this.state.lines.join("\n").trim();
-		for (const [pasteId, pasteContent] of this.pastes) {
-			const markerRegex = new RegExp(`\\[paste #${pasteId}( (\\+\\d+ lines|\\d+ chars))?\\]`, "g");
-			result = result.replace(markerRegex, pasteContent);
-		}
+		const result = this.expandPasteMarkers(this.state.lines.join("\n")).trim();
 
 		this.state = { lines: [""], cursorLine: 0, cursorCol: 0 };
 		this.pastes.clear();
@@ -2031,6 +2036,14 @@ export class Editor implements Component, Focusable {
 		return firstPrefixIndex;
 	}
 
+	private createAutocompleteList(
+		prefix: string,
+		items: Array<{ value: string; label: string; description?: string }>,
+	): SelectList {
+		const layout = prefix.startsWith("/") ? SLASH_COMMAND_SELECT_LIST_LAYOUT : undefined;
+		return new SelectList(items, this.autocompleteMaxVisible, this.theme.selectList, layout);
+	}
+
 	private tryTriggerAutocomplete(explicitTab: boolean = false): void {
 		if (!this.autocompleteProvider) return;
 
@@ -2053,7 +2066,7 @@ export class Editor implements Component, Focusable {
 
 		if (suggestions && suggestions.items.length > 0) {
 			this.autocompletePrefix = suggestions.prefix;
-			this.autocompleteList = new SelectList(suggestions.items, this.autocompleteMaxVisible, this.theme.selectList);
+			this.autocompleteList = this.createAutocompleteList(suggestions.prefix, suggestions.items);
 
 			// If typed prefix exactly matches one of the suggestions, select that item
 			const bestMatchIndex = this.getBestAutocompleteMatchIndex(suggestions.items, suggestions.prefix);
@@ -2129,7 +2142,7 @@ https://github.com/EsotericSoftware/spine-runtimes/actions/runs/19536643416/job/
 			}
 
 			this.autocompletePrefix = suggestions.prefix;
-			this.autocompleteList = new SelectList(suggestions.items, this.autocompleteMaxVisible, this.theme.selectList);
+			this.autocompleteList = this.createAutocompleteList(suggestions.prefix, suggestions.items);
 
 			// If typed prefix exactly matches one of the suggestions, select that item
 			const bestMatchIndex = this.getBestAutocompleteMatchIndex(suggestions.items, suggestions.prefix);
@@ -2169,7 +2182,7 @@ https://github.com/EsotericSoftware/spine-runtimes/actions/runs/19536643416/job/
 		if (suggestions && suggestions.items.length > 0) {
 			this.autocompletePrefix = suggestions.prefix;
 			// Always create new SelectList to ensure update
-			this.autocompleteList = new SelectList(suggestions.items, this.autocompleteMaxVisible, this.theme.selectList);
+			this.autocompleteList = this.createAutocompleteList(suggestions.prefix, suggestions.items);
 
 			// If typed prefix exactly matches one of the suggestions, select that item
 			const bestMatchIndex = this.getBestAutocompleteMatchIndex(suggestions.items, suggestions.prefix);
