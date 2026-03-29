@@ -1280,6 +1280,7 @@ export class InteractiveMode {
 			modelRegistry: this.session.modelRegistry,
 			model: this.session.model,
 			isIdle: () => !this.session.isStreaming,
+			signal: this.session.agent.signal,
 			abort: () => this.session.abort(),
 			hasPendingMessages: () => this.session.pendingMessageCount > 0,
 			shutdown: () => {
@@ -2240,6 +2241,11 @@ export class InteractiveMode {
 					}
 					this.pendingWorkingMessage = undefined;
 				}
+				this.ui.requestRender();
+				break;
+
+			case "queue_update":
+				this.updatePendingMessagesDisplay();
 				this.ui.requestRender();
 				break;
 
