@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- RpcClient now forwards subprocess stderr to parent process in real-time ([#2805](https://github.com/badlogic/pi-mono/issues/2805))
+
+## [0.65.0] - 2026-04-03
+
 ### New Features
 
 - **Session runtime API**: `createAgentSessionRuntime()` and `AgentSessionRuntime` provide a closure-based runtime that recreates cwd-bound services and session config on every session switch. Startup, `/new`, `/resume`, `/fork`, and import all use the same creation path. See [docs/sdk.md](docs/sdk.md) and [examples/sdk/13-session-runtime.ts](examples/sdk/13-session-runtime.ts).

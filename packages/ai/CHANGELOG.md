@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.65.0] - 2026-04-03
+
 ### Added
 
 - Added tool streaming support for newer Z.ai models ([#2732](https://github.com/badlogic/pi-mono/pull/2732) by [@kaofelix](https://github.com/kaofelix))
