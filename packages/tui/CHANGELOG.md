@@ -2,9 +2,19 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed Alt keybindings inside Zellij by skipping the Kitty keyboard protocol query there and enabling xterm `modifyOtherKeys` mode 2 directly ([#3163](https://github.com/badlogic/pi-mono/issues/3163))
+
+## [0.67.2] - 2026-04-14
+
 ### Added
 
-- Added Kitty keyboard protocol support for `super`-modified keybindings such as `super+k`, `super+enter`, and `ctrl+super+k`, including typed `Key.super(...)` helpers ([#3111](https://github.com/badlogic/pi-mono/pull/3111) by [@sudosubin](https://github.com/sudosubin))
+- Added full helper support for Kitty `super`-modified shortcuts, including combinations such as `super+k`, `super+enter`, and `ctrl+super+k` ([#2979](https://github.com/badlogic/pi-mono/issues/2979))
+
+### Fixed
+
+- Fixed Ctrl+Alt letter key matching in tmux by falling through from legacy ESC-prefixed handling to CSI-u and xterm `modifyOtherKeys` parsing when the legacy form does not match ([#2989](https://github.com/badlogic/pi-mono/pull/2989) by [@kaofelix](https://github.com/kaofelix))
 
 ## [0.67.1] - 2026-04-13
 
