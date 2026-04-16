@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `onResponse` to `StreamOptions` so callers can inspect provider HTTP status and headers after each response arrives and before the response stream is consumed ([#3128](https://github.com/badlogic/pi-mono/issues/3128))
+
+## [0.67.5] - 2026-04-16
+
+### Fixed
+
+- Fixed Opus 4.7 adaptive thinking configuration across Anthropic and Bedrock providers by recognizing Opus 4.7 adaptive-thinking support and mapping `xhigh` reasoning to provider-supported effort values ([#3286](https://github.com/badlogic/pi-mono/pull/3286) by [@markusylisiurunen](https://github.com/markusylisiurunen))
+
+## [0.67.4] - 2026-04-16
+
+### Changed
+
+- Added `claude-opus-4-7` model for Anthropic, OpenRouter.
+- Changed Anthropic prompt caching to add a `cache_control` breakpoint on the last tool definition, so tool schemas can be cached independently from transcript updates while preserving existing cache retention behavior ([#3260](https://github.com/badlogic/pi-mono/issues/3260))
+- Changed Kimi Coding model generation to normalize deprecated `k2p5` to `kimi-for-coding` from models.dev data and removed the old static fallback model list ([#3242](https://github.com/badlogic/pi-mono/issues/3242))
+
+## [0.67.3] - 2026-04-15
+
+### Fixed
+
+- Fixed `google-vertex` API key resolution to treat `gcp-vertex-credentials` as an Application Default Credentials marker instead of a literal API key, so marker-based setups correctly fall back to ADC ([#3221](https://github.com/badlogic/pi-mono/pull/3221) by [@deepkilo](https://github.com/deepkilo))
+
 ## [0.67.2] - 2026-04-14
 
 ### Fixed
