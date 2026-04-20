@@ -1,6 +1,15 @@
 import { type ChildProcess, type ChildProcessByStdio, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { Readable } from "node:stream";
@@ -992,6 +1001,20 @@ export class DefaultPackageManager implements PackageManager {
 		const parsed = this.parseSource(source);
 		if (parsed.type === "npm") {
 			if (parsed.pinned) return;
+
+			const installedPath = this.getNpmInstallPath(parsed, scope);
+			const installedVersion = existsSync(installedPath) ? this.getInstalledNpmVersion(installedPath) : undefined;
+			if (installedVersion) {
+				try {
+					const latestVersion = await this.getLatestNpmVersion(parsed.name);
+					if (latestVersion === installedVersion) {
+						return;
+					}
+				} catch {
+					// Preserve existing update behavior when version lookup fails.
+				}
+			}
+
 			await this.withProgress("update", source, `Updating ${source}...`, async () => {
 				await this.installNpm(
 					{
@@ -2190,9 +2213,28 @@ export class DefaultPackageManager implements PackageManager {
 			return resolved;
 		};
 
+		const seenCanonicalSkillPaths = new Set<string>();
+		const resolvedSkills = toResolved(accumulator.skills).filter((entry) => {
+			let canonicalPath: string;
+			try {
+				// Resolve symlink aliases to detect duplicate files.
+				canonicalPath = realpathSync(entry.path);
+			} catch {
+				// Fallback to raw path to match loadSkills() behavior.
+				canonicalPath = entry.path;
+			}
+
+			if (seenCanonicalSkillPaths.has(canonicalPath)) {
+				return false;
+			}
+
+			seenCanonicalSkillPaths.add(canonicalPath);
+			return true;
+		});
+
 		return {
 			extensions: toResolved(accumulator.extensions),
-			skills: toResolved(accumulator.skills),
+			skills: resolvedSkills,
 			prompts: toResolved(accumulator.prompts),
 			themes: toResolved(accumulator.themes),
 		};

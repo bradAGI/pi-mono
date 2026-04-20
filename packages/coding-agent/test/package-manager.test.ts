@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { PassThrough } from "node:stream";
@@ -307,6 +307,35 @@ Content`,
 				expect(matchingSkills[0]?.enabled).toBe(true);
 				expect(matchingSkills[0]?.metadata.scope).toBe("user");
 				expect(matchingSkills[0]?.metadata.source).toBe("auto");
+			} finally {
+				if (previousHome === undefined) {
+					delete process.env.HOME;
+				} else {
+					process.env.HOME = previousHome;
+				}
+			}
+		});
+
+		it("should dedupe user skill entries when ~/.pi/agent/skills is a symlink to ~/.agents/skills", async () => {
+			const previousHome = process.env.HOME;
+			process.env.HOME = tempDir;
+
+			try {
+				const agentSkillsDir = join(agentDir, "skills");
+				const agentsSkillsDir = join(tempDir, ".agents", "skills");
+				mkdirSync(agentsSkillsDir, { recursive: true });
+				// Use junction on Windows to avoid EPERM when symlink privileges are unavailable.
+				const directoryLinkType = process.platform === "win32" ? "junction" : "dir";
+				symlinkSync(agentsSkillsDir, agentSkillsDir, directoryLinkType);
+
+				const skillPath = join(agentsSkillsDir, "foo", "SKILL.md");
+				mkdirSync(join(agentsSkillsDir, "foo"), { recursive: true });
+				writeFileSync(skillPath, "---\nname: foo\ndescription: foo\n---\n");
+
+				const result = await packageManager.resolve();
+				const fooSkills = result.skills.filter((r) => pathEndsWith(r.path, "foo/SKILL.md"));
+
+				expect(fooSkills).toHaveLength(1);
 			} finally {
 				if (previousHome === undefined) {
 					delete process.env.HOME;
@@ -1426,18 +1455,46 @@ export default function(api) { api.registerTool({ name: "test", description: "te
 	});
 
 	describe("offline mode and network timeouts", () => {
-		it("should update project npm packages using @latest", async () => {
+		it("should update project npm packages using @latest when newer version is available", async () => {
+			const installedPath = join(tempDir, ".pi", "npm", "node_modules", "example");
+			mkdirSync(installedPath, { recursive: true });
+			writeFileSync(join(installedPath, "package.json"), JSON.stringify({ name: "example", version: "1.0.0" }));
 			settingsManager.setProjectPackages(["npm:example"]);
 
+			const runCommandCaptureSpy = vi.spyOn(packageManager as any, "runCommandCapture").mockResolvedValue('"1.2.3"');
 			const runCommandSpy = vi.spyOn(packageManager as any, "runCommand").mockResolvedValue(undefined);
 
 			await packageManager.update("npm:example");
 
+			expect(runCommandCaptureSpy).toHaveBeenCalledWith(
+				"npm",
+				["view", "example", "version", "--json"],
+				expect.objectContaining({ cwd: tempDir, timeoutMs: expect.any(Number) }),
+			);
 			expect(runCommandSpy).toHaveBeenCalledWith(
 				"npm",
 				["install", "example@latest", "--prefix", join(tempDir, ".pi", "npm")],
 				undefined,
 			);
+		});
+
+		it("should skip project npm update when installed version matches latest", async () => {
+			const installedPath = join(tempDir, ".pi", "npm", "node_modules", "example");
+			mkdirSync(installedPath, { recursive: true });
+			writeFileSync(join(installedPath, "package.json"), JSON.stringify({ name: "example", version: "1.2.3" }));
+			settingsManager.setProjectPackages(["npm:example"]);
+
+			const runCommandCaptureSpy = vi.spyOn(packageManager as any, "runCommandCapture").mockResolvedValue('"1.2.3"');
+			const runCommandSpy = vi.spyOn(packageManager as any, "runCommand").mockResolvedValue(undefined);
+
+			await packageManager.update("npm:example");
+
+			expect(runCommandCaptureSpy).toHaveBeenCalledWith(
+				"npm",
+				["view", "example", "version", "--json"],
+				expect.objectContaining({ cwd: tempDir, timeoutMs: expect.any(Number) }),
+			);
+			expect(runCommandSpy).not.toHaveBeenCalled();
 		});
 
 		it("should suggest npm source prefixes for update lookups", async () => {
