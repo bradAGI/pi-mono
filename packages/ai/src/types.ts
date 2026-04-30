@@ -37,6 +37,8 @@ export type KnownProvider =
 	| "mistral"
 	| "minimax"
 	| "minimax-cn"
+	| "moonshotai"
+	| "moonshotai-cn"
 	| "huggingface"
 	| "fireworks"
 	| "opencode"
@@ -216,6 +218,7 @@ export interface AssistantMessage {
 	api: Api;
 	provider: Provider;
 	model: string;
+	responseModel?: string; // Concrete `chunk.model` when different from the requested `model` (e.g. OpenRouter `auto` -> `anthropic/...`)
 	responseId?: string; // Provider-specific response/message identifier when the upstream API exposes one
 	usage: Usage;
 	stopReason: StopReason;
