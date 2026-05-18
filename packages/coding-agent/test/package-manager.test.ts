@@ -6,7 +6,6 @@ import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DefaultPackageManager, type ProgressEvent, type ResolvedResource } from "../src/core/package-manager.js";
 import { SettingsManager } from "../src/core/settings-manager.js";
-import { shouldUseWindowsShell } from "../src/utils/child-process.js";
 
 function normalizeForMatch(value: string): string {
 	return value.replace(/\\/g, "/");
@@ -617,14 +616,19 @@ Content`,
 		});
 	});
 
-	describe("windows command spawning", () => {
-		it("should avoid the shell for git so Windows paths with spaces stay single arguments", () => {
-			vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+	describe("command spawning", () => {
+		it("should preserve argv entries containing spaces", () => {
+			const managerWithInternals = packageManager as unknown as {
+				runCommandSync(command: string, args: string[]): string;
+			};
+			const valueWithSpace = "C:\\Users\\A B\\.pi\\npm";
+			const output = managerWithInternals.runCommandSync(process.execPath, [
+				"-e",
+				"console.log(process.argv[1])",
+				valueWithSpace,
+			]);
 
-			expect(shouldUseWindowsShell("git")).toBe(false);
-			expect(shouldUseWindowsShell("npm")).toBe(true);
-			expect(shouldUseWindowsShell("pnpm")).toBe(true);
-			expect(shouldUseWindowsShell("C:/Program Files/nodejs/npm.cmd")).toBe(true);
+			expect(output).toBe(valueWithSpace);
 		});
 	});
 

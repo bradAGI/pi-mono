@@ -1,4 +1,4 @@
-import { type ChildProcess, type ChildProcessByStdio, spawn, spawnSync } from "node:child_process";
+import type { ChildProcess, ChildProcessByStdio } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -28,7 +28,7 @@ import { globSync } from "glob";
 import ignore from "ignore";
 import { minimatch } from "minimatch";
 import { CONFIG_DIR_NAME } from "../config.js";
-import { shouldUseWindowsShell } from "../utils/child-process.js";
+import { spawnProcess, spawnProcessSync } from "../utils/child-process.js";
 import { type GitSource, parseGitUrl } from "../utils/git.js";
 import { canonicalizePath, isLocalPath } from "../utils/paths.js";
 import { isStdoutTakenOver } from "./output-guard.js";
@@ -2408,11 +2408,11 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private spawnCommand(command: string, args: string[], options?: { cwd?: string }): ChildProcess {
-		return spawn(command, args, {
+		const env = getEnv();
+		return spawnProcess(command, args, {
 			cwd: options?.cwd,
 			stdio: isStdoutTakenOver() ? ["ignore", 2, 2] : "inherit",
-			shell: shouldUseWindowsShell(command),
-			env: getEnv(),
+			env,
 		});
 	}
 
@@ -2422,11 +2422,11 @@ export class DefaultPackageManager implements PackageManager {
 		options?: { cwd?: string; env?: Record<string, string> },
 	): ChildProcessByStdio<null, Readable, Readable> {
 		const baseEnv = getEnv();
-		return spawn(command, args, {
+		const env = options?.env ? { ...baseEnv, ...options.env } : baseEnv;
+		return spawnProcess(command, args, {
 			cwd: options?.cwd,
 			stdio: ["ignore", "pipe", "pipe"],
-			shell: shouldUseWindowsShell(command),
-			env: options?.env ? { ...baseEnv, ...options.env } : baseEnv,
+			env,
 		});
 	}
 
@@ -2489,11 +2489,11 @@ export class DefaultPackageManager implements PackageManager {
 	}
 
 	private runCommandSync(command: string, args: string[]): string {
-		const result = spawnSync(command, args, {
+		const env = getEnv();
+		const result = spawnProcessSync(command, args, {
 			stdio: ["ignore", "pipe", "pipe"],
 			encoding: "utf-8",
-			shell: shouldUseWindowsShell(command),
-			env: getEnv(),
+			env,
 		});
 		if (result.error || result.status !== 0) {
 			throw new Error(
