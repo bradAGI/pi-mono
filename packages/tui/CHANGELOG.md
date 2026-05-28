@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-05-27
+
 ### Added
 
 - Added an opt-in Markdown renderer option to preserve source ordered-list markers for transcript rendering ([#5013](https://github.com/earendil-works/pi/issues/5013)).
