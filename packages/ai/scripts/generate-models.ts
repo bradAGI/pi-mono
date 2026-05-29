@@ -245,7 +245,12 @@ function applyThinkingLevelMetadata(model: Model<any>): void {
 		mergeAnthropicMessagesCompat(model, { forceAdaptiveThinking: true });
 	}
 	if (model.api === "openai-completions" && model.id.includes("deepseek-v4")) {
-		mergeThinkingLevelMap(model, DEEPSEEK_V4_THINKING_LEVEL_MAP);
+		mergeThinkingLevelMap(
+			model,
+			model.provider === "openrouter"
+				? { ...DEEPSEEK_V4_THINKING_LEVEL_MAP, xhigh: "xhigh" }
+				: DEEPSEEK_V4_THINKING_LEVEL_MAP,
+		);
 	}
 	if (isGoogleThinkingApi(model) && isGemini3ProModel(model.id)) {
 		mergeThinkingLevelMap(model, { off: null, minimal: null, low: "LOW", medium: null, high: "HIGH" });
@@ -268,6 +273,9 @@ function applyThinkingLevelMetadata(model: Model<any>): void {
 		// instead of defaulting to {reasoning:{effort:"none"}} (see openai-completions.ts:575).
 		// Pi's low/medium/high pass through verbatim; OpenRouter normalizes to Mercury's vocabulary.
 		mergeThinkingLevelMap(model, { off: null });
+	}
+	if (model.provider === "opencode-go" && model.id === "kimi-k2.6") {
+		mergeThinkingLevelMap(model, { off: "none" });
 	}
 }
 
@@ -900,6 +908,9 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 						api = "openai-completions";
 						baseUrl = `${variant.basePath}/v1`;
 					}
+					if (modelId === "kimi-k2.6") {
+						compat = { ...(compat ?? {}), thinkingFormat: "string-thinking" };
+					}
 					if (modelId === "qwen3.5-plus" || modelId === "qwen3.6-plus") {
 						api = "openai-completions";
 						baseUrl = `${variant.basePath}/v1`;
@@ -1116,6 +1127,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 				for (const [modelId, model] of Object.entries(data.xiaomi.models)) {
 					const m = model as ModelsDevModel;
 					if (m.tool_call !== true) continue;
+					if (provider.startsWith("xiaomi-token-plan-") && modelId === "mimo-v2-flash") continue;
 
 					models.push({
 						id: modelId,
@@ -1513,11 +1525,9 @@ async function generateModels() {
 					? {
 							requiresReasoningContentOnAssistantMessages:
 								deepseekCompat.requiresReasoningContentOnAssistantMessages,
-							thinkingFormat: deepseekCompat.thinkingFormat,
 						}
 					: deepseekCompat),
 			};
-			mergeThinkingLevelMap(candidate, DEEPSEEK_V4_THINKING_LEVEL_MAP);
 		}
 	}
 
