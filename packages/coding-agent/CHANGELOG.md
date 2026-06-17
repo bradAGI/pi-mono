@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `/model` autocomplete and model selection searches to match provider/model queries regardless of whether the provider or model token is typed first.
+- Fixed the tree navigator to horizontally pan deep entries so the selected item remains readable ([#5830](https://github.com/earendil-works/pi/issues/5830)).
+
+## [0.79.6] - 2026-06-16
+
+### Fixed
+
+- Fixed HTTP dispatcher configuration to preserve a caller's deliberate `fetch` override instead of reinstalling the undici global fetch over it.
+- Fixed inherited OpenCode Go DeepSeek V4 thinking-off requests to send the provider's `thinking: { type: "disabled" }` compatibility parameter.
+
 ## [0.79.5] - 2026-06-16
 
 ### New Features
