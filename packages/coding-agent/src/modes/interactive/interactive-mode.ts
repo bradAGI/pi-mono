@@ -95,7 +95,7 @@ import { isInstallTelemetryEnabled } from "../../core/telemetry.ts";
 import type { TruncationResult } from "../../core/tools/truncate.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
 import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelog } from "../../utils/changelog.ts";
-import { copyToClipboard } from "../../utils/clipboard.ts";
+import { copyToClipboard, readClipboardText } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
 import { getCwdRelativePath } from "../../utils/paths.ts";
@@ -770,7 +770,7 @@ export class InteractiveMode {
 				rawKeyHint("!!", "to run bash (no context)"),
 				hint("app.message.followUp", "to queue follow-up"),
 				hint("app.message.dequeue", "to edit all queued messages"),
-				hint("app.clipboard.pasteImage", "to paste image"),
+				hint("app.clipboard.pasteImage", "to paste image (with text fallback)"),
 				rawKeyHint("drop files", "to attach"),
 			].join("\n");
 			const compactInstructions = [
@@ -2583,6 +2583,7 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
+		this.defaultEditor.onAction("app.message.copy", () => void this.handleCopyCommand());
 		this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
 		this.defaultEditor.onAction("app.message.dequeue", () => this.handleDequeue());
 		this.defaultEditor.onAction("app.session.new", () => this.handleClearCommand());
@@ -2598,29 +2599,33 @@ export class InteractiveMode {
 			}
 		};
 
-		// Handle clipboard image paste (triggered on Ctrl+V)
+		// Handle clipboard paste (triggered on Ctrl+V). Images are attached by path;
+		// otherwise, paste plain text from the system clipboard.
 		this.defaultEditor.onPasteImage = () => {
-			this.handleClipboardImagePaste();
+			void this.handleClipboardPaste();
 		};
 	}
 
-	private async handleClipboardImagePaste(): Promise<void> {
+	private async handleClipboardPaste(): Promise<void> {
 		try {
 			const image = await readClipboardImage();
-			if (!image) {
+			if (image) {
+				const tmpDir = os.tmpdir();
+				const ext = extensionForImageMimeType(image.mimeType) ?? "png";
+				const fileName = `pi-clipboard-${crypto.randomUUID()}.${ext}`;
+				const filePath = path.join(tmpDir, fileName);
+				fs.writeFileSync(filePath, Buffer.from(image.bytes));
+
+				this.editor.insertTextAtCursor?.(filePath);
+				this.ui.requestRender();
 				return;
 			}
 
-			// Write to temp file
-			const tmpDir = os.tmpdir();
-			const ext = extensionForImageMimeType(image.mimeType) ?? "png";
-			const fileName = `pi-clipboard-${crypto.randomUUID()}.${ext}`;
-			const filePath = path.join(tmpDir, fileName);
-			fs.writeFileSync(filePath, Buffer.from(image.bytes));
-
-			// Insert file path directly
-			this.editor.insertTextAtCursor?.(filePath);
-			this.ui.requestRender();
+			const text = await readClipboardText();
+			if (text) {
+				this.editor.insertTextAtCursor?.(text);
+				this.ui.requestRender();
+			}
 		} catch {
 			// Silently ignore clipboard errors (may not have permission, etc.)
 		}
@@ -4708,6 +4713,18 @@ export class InteractiveMode {
 				initialSelectedId,
 				initialFilterMode,
 			);
+			selector.onCopy = async (text) => {
+				if (!text) {
+					this.showError("Selected entry has no text to copy");
+					return;
+				}
+				try {
+					await copyToClipboard(text);
+					this.showStatus("Copied selected message to clipboard");
+				} catch (error) {
+					this.showError(error instanceof Error ? error.message : String(error));
+				}
+			};
 			return { component: selector, focus: selector };
 		});
 	}
@@ -5735,6 +5752,7 @@ export class InteractiveMode {
 		const toggleThinking = this.getAppKeyDisplay("app.thinking.toggle");
 		const externalEditor = this.getAppKeyDisplay("app.editor.external");
 		const cycleModelBackward = this.getAppKeyDisplay("app.model.cycleBackward");
+		const copyMessage = this.getAppKeyDisplay("app.message.copy");
 		const followUp = this.getAppKeyDisplay("app.message.followUp");
 		const dequeue = this.getAppKeyDisplay("app.message.dequeue");
 		const pasteImage = this.getAppKeyDisplay("app.clipboard.pasteImage");
@@ -5778,9 +5796,10 @@ export class InteractiveMode {
 | \`${expandTools}\` | Toggle tool output expansion |
 | \`${toggleThinking}\` | Toggle thinking block visibility |
 | \`${externalEditor}\` | Edit message in external editor |
+| \`${copyMessage}\` | Copy last assistant message |
 | \`${followUp}\` | Queue follow-up message |
 | \`${dequeue}\` | Restore queued messages |
-| \`${pasteImage}\` | Paste image from clipboard |
+| \`${pasteImage}\` | Paste image or text from clipboard |
 | \`/\` | Slash commands |
 | \`!\` | Run bash command |
 | \`!!\` | Run bash command (excluded from context) |
