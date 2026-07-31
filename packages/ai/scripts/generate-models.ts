@@ -551,6 +551,7 @@ const OPENAI_COMPLETIONS_DEFAULT_COMPAT = {
 	supportsDeveloperRole: true,
 	supportsReasoningEffort: true,
 	supportsUsageInStreaming: true,
+	supportsFinishReason: true,
 	maxTokensField: "max_completion_tokens",
 	requiresToolResultName: false,
 	requiresAssistantAfterToolResult: false,
@@ -630,6 +631,7 @@ function detectOpenAICompletionsCompat(model: Model<"openai-completions">): Open
 		supportsReasoningEffort:
 			!isGrok && !isZai && !isMoonshot && !isTogether && !isCloudflareAiGateway && !isNvidia && !isAntLing,
 		supportsUsageInStreaming: true,
+		supportsFinishReason: true,
 		maxTokensField: useMaxTokens ? "max_tokens" : "max_completion_tokens",
 		requiresToolResultName: false,
 		requiresAssistantAfterToolResult: false,
@@ -2166,6 +2168,19 @@ async function generateModels() {
 			candidate.api = "openai-completions";
 			candidate.baseUrl = "https://api.fireworks.ai/inference/v1";
 			candidate.compat = { supportsStore: false, supportsDeveloperRole: false };
+		}
+		if (candidate.provider === "fireworks" && candidate.id.includes("kimi-k3")) {
+			candidate.api = "openai-completions";
+			candidate.baseUrl = "https://api.fireworks.ai/inference/v1";
+			candidate.compat = {
+				supportsStore: false,
+				supportsDeveloperRole: false,
+				requiresReasoningContentOnAssistantMessages: true,
+				thinkingFormat: "openai",
+				deferredToolsMode: "kimi",
+				sendSessionAffinityHeaders: true,
+				supportsLongCacheRetention: false,
+			};
 		}
 	}
 
